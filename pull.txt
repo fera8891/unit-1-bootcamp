@@ -1,0 +1,94 @@
+1   public class UserAgreement extends Fragment implements CompoundButton.OnCheckedChangeListener
+2   {
+3       CheckBox acceptTermsCheckBox;
+4       TextView userName;
+5       Button submitAgreement;
+6
+7       @Override
+8       public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+9       	View userAgreementView = inflater.inflate(R.layout.ua_tos_fragment, container, false);
+10
+11      	//Setup Checkbox Event Listeners
+12          acceptTermsCheckBox=(CheckBox)userAgreementView.findViewById(R.id.agree);
+13          acceptTermsCheckBox.setOnCheckedChangeListener(this);
+14
+15          // Setup Button Event Listener
+16          submitAgreement = (Button)userAgreementView.findViewById(R.id.submit_agreement);
+17          submitAgreement.setOnClickListener(new View.OnClickListener() {
+18
+19          	/*
+20          	 * Submit the user preference and load new data from server
+21          	 */
+22              @Override
+23              public void onClick(View v) { 
+24              	//Submit user agreement preference to Server     
+25  				HttpClient httpClient = new DefaultHttpClient();
+26  				HttpPost httpPost = new HttpPost("http://www.tw.com/agree/");
+27
+28  			    try {
+29  			      	//create the request data
+30  			      	List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>(2);
+31  			      	String userName = userName.getText().toString();
+32  			      	nameValuePairs.add(new BasicNameValuePair("username", userName));
+33  			      	nameValuePairs.add(new BasicNameValuePair("ua_tos_agree", "true"));
+34  			      	httpPost.setEntity(new UrlEncodedFormEntity(nameValuePairs));
+35
+36  			      	//execute the server call
+37  			      	HttpResponse response = httpclient.execute(httpPost);
+38
+39  			      	// Get draft images from server after user accepts agreement
+40  					HttpGet httpGet = new HttpGet( "http://www.tw.com/draft/images");
+41  					httpGet.addHeader("accept", "application/json");
+42
+43  					response = httpClient.execute(httpGet);
+44  					httpClient.getConnectionManager().shutdown();
+45
+46  					/*
+47  					 * Sample JSON Response
+48  					 * [{ "id":1, image:"apple.jpg" }, { "id":2, image:"ball.jpg" },....]
+49  					 */
+50  					String jsonImages = EntityUtils.toString(response.getEntity().getContent());
+51  					JSONArray jsonImagesArray = new JSONArray(jsonImages);
+52
+53  					// Create a list os json objects
+54  					List<JSONObject> imageList = new ArrayList<JSONObject>();
+55  				    for (int i = 0; i < jsonImagesArray.length(); i++) {
+56  				        imageList.add(jsonImagesArray.getJSONObject(i));
+57  				    }
+58
+59  				    // Generate URL to the JSON object
+60  				    for (JSONObject tempImage : imageList) {
+61  						String imageName = tempImage.put("image");
+62  						tempImage.put("url", "http://tw.com"+imageName);
+63  					}
+64
+65  					// Open new activity
+66  					Intent intent = new Intent(this, DisplayImagesActivity.class);
+67  			        intent.putExtra("IMAGES", imageList);
+68  			        startActivity(intent);
+69
+70  			    } catch (ClientProtocolException e) {
+71
+72  			    } catch (IOException e) {
+73
+74  			    }
+75              }
+76          });
+77          return userAgreementView;
+78      }
+79
+80      /*
+81       * Detect changes to the checkbox
+82       */
+83  	@Override
+84  	public void onCheckedChanged(CompoundButton compoundButtonView, boolean isChecked) 
+85      {
+86          if (isChecked) {
+87          	submitAgreement = (Button)getView().findViewById(R.id.submit_agreement);
+88          	submitAgreement.setClickable(true);
+89          } else {
+90          	submitAgreement = (Button)getView().findViewById(R.id.submit_agreement);
+91          	submitAgreement.setClickable(false);
+92          }
+93      }
+94  }
